@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Project-local database cluster (never commit DB files)
+.data/
+
+# Secrets
+.env
+.env.local
+
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
