@@ -69,8 +69,9 @@ EduNova/
 │   ├── requirements.txt
 │   └── .env.example
 ├── scripts/
-│   ├── setup_db.sh             # one-command DB bootstrap for fresh clones
-│   ├── db.sh                   # start/stop/status/psql/reset/setup
+│   ├── db.py                   # cross-platform DB bootstrap & management (Linux/macOS/Windows)
+│   ├── setup_db.sh             # POSIX shim for `db.py setup`
+│   ├── db.sh                   # POSIX shim for `db.py {setup|start|stop|status|psql|reset}`
 │   └── pgvector/vector--0.8.6.sql  # bundled pgvector extension script
 ├── schema.sql                  # canonical schema (12 tables, pgvector)
 └── frontend/                   # (React + TS + Tailwind SPA — in progress)
@@ -78,27 +79,48 @@ EduNova/
 
 ## Prerequisites
 
-- **Python 3.12+** (developed on 3.14)
-- **PostgreSQL binaries on PATH**: `pg_config`, `initdb`, `pg_ctl`, `psql`
-  (`apt install postgresql`, `brew install postgresql@18`, etc.). The project
-  does **not** need your system cluster — it creates its own on port **5433**.
-- **Build tools** (first pgvector build only): `make`, `gcc`, `git`
-  (Linux: the postgres server dev headers, e.g. `postgresql-server-dev-18`).
+- **Python 3.12+** (developed on 3.14) — only the standard library is used by
+  the DB tooling.
+- **PostgreSQL 13–18 binaries**: `pg_config`, `initdb`, `pg_ctl`, `psql`.
+  The project does **not** need (and never touches) a system cluster — it
+  creates its **own** in `.data/db` on port **5433**.
+  - Linux: `apt install postgresql` (dev headers only needed if no prebuilt
+    pgvector is around)
+  - macOS: `brew install postgresql@18`
+  - Windows: the [EDB installer](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)
+    (any 13–18). `db.py` auto-detects
+    `C:\Program Files\PostgreSQL\\<ver>\bin`.
+- **pgvector** is handled for you: if your PostgreSQL install already has it,
+  `CREATE EXTENSION vector` is used; otherwise `db.py` **builds it from
+  source (Linux/macOS)** or **downloads the matching prebuilt DLL
+  (Windows)** — no manual steps.
 - **Node 20+/npm** (only for the frontend, which is in progress).
 
-No sudo/root access is required anywhere.
+No sudo/root required anywhere.
 
 ## Database setup & migration
 
 The project keeps a **private PostgreSQL cluster** in `.data/db` on port
 **5433**, so it never touches (or conflicts with) a system postgres.
-pgvector is built from source once and installed into the cluster.
+
+The tooling is a **single Python file** — `scripts/db.py` — and runs
+identically on Linux, macOS and Windows. The `scripts/*.sh` files are thin
+shims over it (for POSIX shells).
 
 ### Fresh clone — one command
+
+**Linux / macOS / Git Bash:**
 
 ```bash
 git clone <repo-url> edunova && cd edunova
 ./scripts/setup_db.sh
+```
+
+**Windows (PowerShell or cmd):**
+
+```powershell
+git clone <repo-url> edunova && cd edunova
+python scripts\db.py setup
 ```
 
 That single command, idempotently:
@@ -106,20 +128,29 @@ That single command, idempotently:
 2. starts it on port `5433`,
 3. creates roles `postgres` (superuser) and `edunova_user` and database
    `edunova_db`,
-4. builds pgvector v0.8.6 (one-time, into `.data/pgvector`) and installs the
-   `vector(1536)` type,
+4. installs pgvector v0.8.6 — tries `CREATE EXTENSION vector` first, else
+   builds from source (POSIX) or downloads the prebuilt DLL for your exact
+   PG major (Windows) — and installs the `vector(1536)` type,
 5. applies `schema.sql` (the **12 tables**) — only if not already applied.
 
-Re-run any time; it detects what exists. `./scripts/setup_db.sh --reset`
+Re-run any time; it detects what exists. `python scripts/db.py setup --reset`
 drops and re-applies the schema (wipes data).
+
+> **Windows note:** pgvector on Windows is distributed as a prebuilt DLL
+> matching each PostgreSQL version (13–18). `db.py` downloads and installs it
+> into the private cluster automatically, so **no compiler is needed**. The
+> DLL is fetched from the community-maintained
+> [pgvector_pgsql_windows](https://github.com/andreiramani/pgvector_pgsql_windows)
+> release for your PG version.
 
 ### Migration workflow
 
 `schema.sql` is the source of truth for structure. Two ways to apply a change:
 
 - **Local reset (deletes data):** after editing `schema.sql`, run
-  `./scripts/db.sh reset` — drops the 12 app tables in dependency order and
-  re-applies `schema.sql`. pgvector types are untouched.
+  `python scripts/db.py reset` (or `./scripts/db.sh reset`) — drops the 12 app
+  tables in dependency order and re-applies `schema.sql`. pgvector types are
+  untouched.
 - **Incremental (keeps data):** append an `ALTER TABLE ...` to
   `scripts/migrations/NNN_name.sql` and apply it:
 
@@ -129,19 +160,25 @@ drops and re-applies the schema (wipes data).
 
 ### Day-to-day cluster management
 
+Same commands work everywhere (`python scripts/db.py ...` or the POSIX `db.sh`
+shims):
+
 ```bash
-./scripts/db.sh start      # start (.data/db, port 5433)
-./scripts/db.sh stop       # stop
-./scripts/db.sh status     # running?
-./scripts/db.sh psql       # interactive shell as edunova_user
-./scripts/db.sh reset      # drop tables + re-apply schema.sql
+python scripts/db.py start      # start (.data/db, port 5433)
+python scripts/db.py stop       # stop
+python scripts/db.py status     # running?
+python scripts/db.py psql       # interactive shell as edunova_user
+python scripts/db.py reset      # drop tables + re-apply schema.sql
+python scripts/db.py setup      # full idempotent bootstrap (= setup_db.sh)
 ```
 
 ## Running the backend API
 
+**Linux / macOS:**
+
 ```bash
 cd backend
-python3 -m venv ../.venv && source ../.venv/bin/activate   # or reuse existing .venv
+python3 -m venv ../.venv && source ../.venv/bin/activate
 pip install -r requirements.txt
 python -m playwright install chromium        # once, for the scraper
 cp .env.example .env                          # adjust as needed
@@ -152,6 +189,18 @@ python scripts/populate.py
 # run the API (rebuild on save):
 uvicorn app.main:app --reload                 # http://localhost:8000
 # interactive docs: http://localhost:8000/docs
+```
+
+**Windows (PowerShell):**
+
+```powershell
+cd backend
+py -m venv ..\.venv ; ..\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m playwright install chromium
+Copy-Item .env.example .env
+python scripts\populate.py
+uvicorn app.main:app --reload                 # http://localhost:8000
 ```
 
 Environment (`backend/.env`, copy of `.env.example`):
