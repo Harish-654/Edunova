@@ -1,121 +1,83 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const folders = [
+    { name: 'backend', open: true, children: ['app', 'scripts', 'requirements.txt'] },
+    { name: 'frontend', open: true, children: ['public', 'src', 'package.json'] },
+    { name: 'scripts', open: false, children: ['db.py', 'setup_db.sh'] },
+  ]
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <main className="app-shell">
+      <aside className="sidebar" aria-label="EduNova project folders">
+        <div className="sidebar-heading">
+          <span className="brand-mark">E</span>
+          <span>EduNova</span>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
+        <div className="explorer-label">EXPLORER</div>
+        <nav className="folder-tree" aria-label="Project folders">
+          <button type="button" className="tree-item project-item">
+            <span className="chevron">⌄</span>
+            <span className="folder-icon" aria-hidden="true" />
+            <span>EDUNOVA-AI</span>
+          </button>
+          {folders.map((folder) => (
+            <div className="folder-group" key={folder.name}>
+              <button type="button" className="tree-item">
+                <span className="chevron">{folder.open ? '⌄' : '›'}</span>
+                <span className="folder-icon" aria-hidden="true" />
+                <span>{folder.name}</span>
+              </button>
+              {folder.open && (
+                <div className="folder-children">
+                  {folder.children.map((child) => (
+                    <button type="button" className="tree-item child-item" key={child}>
+                      <span className="file-icon" aria-hidden="true" />
+                      <span>{child}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          <button type="button" className="tree-item">
+            <span className="file-icon" aria-hidden="true" />
+            <span>README.md</span>
+          </button>
+          <button type="button" className="tree-item">
+            <span className="file-icon" aria-hidden="true" />
+            <span>schema.sql</span>
+          </button>
+        </nav>
+      </aside>
+
+      <section className="content-panel">
+        <header className="topbar">
+          <span className="breadcrumb">EduNova / Overview</span>
+          <span className="status-dot">System ready</span>
+        </header>
+        <div className="content-inner">
+          <p className="eyebrow">CAREER GUIDANCE PLATFORM</p>
+          <h1>Build a clearer path forward.</h1>
+          <p className="intro">
+            Explore your project folders and keep the matching engine, student profiles,
+            and exam catalog in one place.
           </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+          <div className="overview-grid">
+            <article>
+              <span className="card-kicker">01 / MATCH</span>
+              <h2>Find your next opportunity</h2>
+              <p>Ranked entrance exam recommendations based on your goals and eligibility.</p>
+            </article>
+            <article>
+              <span className="card-kicker">02 / PROFILE</span>
+              <h2>Your profile, understood</h2>
+              <p>Keep marks, preferences, and financial context ready for every match.</p>
+            </article>
+          </div>
         </div>
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 
