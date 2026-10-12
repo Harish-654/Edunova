@@ -261,11 +261,14 @@ def build_pgvector_posix(lib_dest: Path, major: str) -> None:
         extracted = next(p for p in Path(tmp).iterdir() if p.is_dir() and p.name.startswith("pgvector"))
         log = (DATA_DIR / "pgvector-build.log")
 
-        r = run("make", "-s", "-C", extracted, "PG_CONFIG", str(_p("pg_config")), capture_output=True)
+        r = run("make", "-s", "-C", extracted, f"PG_CONFIG={_p('pg_config')}", capture_output=True)
         if r.returncode != 0:
             log.write_text(r.stdout + "\n" + r.stderr)
             die(f"make failed (log: {log}). Usually missing PG dev headers or a C compiler:\n{r.stderr[-800:]}")
-        shutil.copy(extracted / "src" / "vector.so", lib_dest)
+        built = extracted / ("vector" + PGSQL_EXT)
+        if not built.exists():
+            built = next(extracted.rglob("vector" + PGSQL_EXT))
+        shutil.copy(built, lib_dest)
     say(f"  built -> {lib_dest}")
 
 
@@ -293,6 +296,7 @@ def ensure_pgvector() -> None:
         return
 
     lib_dest = PGVEC_DIR / ("vector" + PGSQL_EXT)
+    PGVEC_DIR.mkdir(parents=True, exist_ok=True)
     if not lib_dest.exists():
         if IS_WINDOWS:
             acquire_pgvector_dll(lib_dest, _PG_MAJOR)
@@ -303,7 +307,6 @@ def ensure_pgvector() -> None:
     base_path = str(lib_dest.with_suffix(""))
     if IS_WINDOWS:
         base_path = base_path.replace("\\", "/")
-    PGVEC_DIR.mkdir(parents=True, exist_ok=True)
     install_sql = PGVEC_DIR / "vector_install.sql"
     install_sql.write_text(PGVEC_SQL.read_text().replace("MODULE_PATHNAME", base_path))
     r = run(_p("psql"), "-h", "localhost", "-p", PORT, "-U", "postgres", "-d", DB_NAME,
@@ -316,7 +319,7 @@ def ensure_pgvector() -> None:
 
 # ------------------------------------------------------------------ schema
 APP_TABLES = [
-    "scholarship_exam_mappings", "scholarships", "ingestion_anomaly_logs",
+    "questionnaire_responses", "scholarship_exam_mappings", "scholarships", "ingestion_anomaly_logs",
     "raw_staging_payloads", "scraping_sources", "recommendation_cache",
     "eligibility_rules", "exam_schedules", "exams", "student_marks",
     "student_preferences", "students",
@@ -374,8 +377,8 @@ def main() -> None:
         ensure_pgvector()
         apply_schema(reset=args.reset)
         say(f"Done. Connect: psql -h localhost -p {PORT} -U {DB_USER} -d {DB_NAME}")
-        say("Next: cp backend/.env.example backend/.env  &&  pip install -r backend/requirements.txt")
-        say("Then seed data:  python backend/scripts/populate.py")
+        say("Next: pip install -r database_ingestion/requirements.txt")
+        say("Then seed data:  python database_ingestion/scripts/populate.py")
     elif args.command == "start":
         if cluster_version() is None:
             init_cluster()
