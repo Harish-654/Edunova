@@ -6,6 +6,9 @@ venv/
 *.env
 *.log
 *.sqlite3
+.data/
 .DS_Store
 .vscode/
 .idea/
+node_modules/
+dist/
