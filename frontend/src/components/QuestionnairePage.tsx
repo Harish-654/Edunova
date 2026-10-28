@@ -5,6 +5,12 @@ import type { Question, QuestionnaireResult } from "../types";
 
 type AnswerValue = string | number | string[];
 
+interface StoredResponse {
+  answers: Record<string, AnswerValue>;
+  derived_statement: string | null;
+  derived_fields: string[] | null;
+}
+
 interface Props {
   onSubmitted?: () => void;
 }
@@ -22,6 +28,22 @@ export default function QuestionnairePage({ onSubmitted }: Props) {
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Failed to load questions"),
       );
+  }, []);
+
+  // the server keeps the last submission, so reopening this tab shows it instead of a blank form
+  useEffect(() => {
+    api<StoredResponse | null>("/questionnaire/me")
+      .then((saved) => {
+        if (!saved) return;
+        setAnswers(saved.answers);
+        setResult({
+          derived_statement: saved.derived_statement ?? "",
+          derived_fields: saved.derived_fields ?? [],
+          career_interest_statement: saved.derived_statement ?? "",
+          profile_updated: true,
+        });
+      })
+      .catch(() => {});
   }, []);
 
   function setValue(id: string, value: AnswerValue) {
